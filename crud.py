@@ -2,28 +2,34 @@ from sqlalchemy.orm import Session, load_only
 from sqlalchemy import func
 import uuid
 import models, schemas
-from typing import Optional
+from typing import Optional, List
 from fastapi import Request
 
 
 def get_event(db: Session, event_id: uuid.UUID):
-    return db.query(models.Event).get(event_id)
+    event = db.query(models.Event).get(event_id)
+    answers = []
+    for answer in event.answers:
+        answers.append(answer.answer)
+    event = event.__dict__
+    event['answers'] = answers
+    return event
 
 
-def create_event(db: Session, event: schemas.EventCreate, answers: [schemas.AnswerCreate]):
+def create_event(db: Session, event: schemas.EventCreate, answers: List[str]):
     db_event = models.Event(**event.dict())
     db.add(db_event)
     db.flush()
     db.commit()
     for answer in answers:
-        db_answer = models.Answer(answer, event_id=db_event.id)
+        db_answer = models.Answer(answer=answer, event_id=db_event.id)
         db.add(db_answer)
     db.flush()
     db.commit()
     return db_event
 
 
-def create_vote(db: Session, votes: [str], event_id: uuid.UUID, voter_username: str, voter_email: str):
+def create_vote(db: Session, votes: List[str], event_id: uuid.UUID, voter_username: str, voter_email: str):
     if voter_email != '':
         db_voter = db.query(models.Voter).filter(models.Voter.email == voter_email).first()
     else:

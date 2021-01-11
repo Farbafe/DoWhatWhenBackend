@@ -1,6 +1,7 @@
 from typing import List
 import uuid
 from fastapi import Depends, FastAPI, HTTPException, Body, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 import crud, models, schemas
@@ -10,6 +11,17 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:8080"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # Dependency
 def get_db():
@@ -20,12 +32,12 @@ def get_db():
         db.close() # not an error, just pylint
 
 
-@app.post("/events/", response_model=schemas.Event)
-def create_event(event: schemas.EventCreate, answers: List[schemas.AnswerCreate], db: Session = Depends(get_db)):
+@app.post("/events", response_model=schemas.Event)
+def create_event(event: schemas.EventCreate, answers: List[str], db: Session = Depends(get_db)):
     return crud.create_event(db=db, event=event, answers=answers)
 
 
-@app.get("/events/{event_id}", response_model=schemas.Event)
+@app.get("/events/{event_id}")
 def get_event(event_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_event(db=db, event_id=event_id)
 
