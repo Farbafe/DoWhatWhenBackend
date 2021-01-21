@@ -8,9 +8,14 @@ from fastapi import Request
 
 def get_event(db: Session, event_id: uuid.UUID):
     event = db.query(models.Event).get(event_id)
+    is_custom_answers_added = event.is_custom_answers_added
     answers = []
     for answer in event.answers:
-        answers.append(answer.answer)
+        if answer.is_custom == True:
+            if is_custom_answers_added == True:
+                answers.append(answer.answer)
+        else:
+            answers.append(answer.answer)
     event = event.__dict__
     event['answers'] = answers
     return event
@@ -25,6 +30,14 @@ def create_event(db: Session, event: schemas.EventCreate, answers: List[str]):
         db_answer = models.Answer(answer=answer, event_id=db_event.id)
         db.add(db_answer)
     db.flush()
+    db.commit()
+    return db_event
+
+
+def patch_event_admin_email(db: Session, admin_email: str, will_email_admin: bool, event_id: uuid.UUID): # TODO set cron or other to send email
+    db_event = db.query(models.Event).get(event_id)
+    db_event.will_email_admin = will_email_admin
+    db_event.admin_email = admin_email
     db.commit()
     return db_event
 
@@ -66,13 +79,13 @@ def create_vote(db: Session, votes: List[str], event_id: uuid.UUID, voter_userna
     return {"success": 1}
 
 
-def get_result(db: Session, event_id: uuid.UUID):
+def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
     rows = db.query(models.Answer.answer, func.count(models.Answer.answer)).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).all()
     return dict(rows)
 
 
-def get_voters(db: Session, event_id: uuid.UUID, answer: dict):
-    voters = db.query(models.Voter.username).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer['answer']).all()
+def get_voters(db: Session, event_id: uuid.UUID, answer: str): # TODO pagination?
+    voters = db.query(models.Voter.username).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer).all()
     _voters = []
     for voter in voters:
         _voters.append(voter[0])
