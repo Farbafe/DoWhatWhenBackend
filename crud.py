@@ -66,7 +66,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
             answer_id = answers[vote['choice']]
         except KeyError:
             if can_write_custom:
-                db_answer = models.Answer(answer=vote, event_id=event_id, is_custom=True)
+                db_answer = models.Answer(answer=vote['choice'], event_id=event_id, is_custom=True)
                 db.add(db_answer)
                 db.flush()
                 db.commit()
