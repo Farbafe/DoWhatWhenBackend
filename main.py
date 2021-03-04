@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 import crud, models, schemas
+import email_scheduler
 from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
@@ -25,6 +26,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+@app.on_event("startup")
+def startup():
+    email_scheduler.start_scheduler('sqlite:///email_database.sqlite')
+
+@app.on_event("shutdown")
+def shutdown():
+    email_scheduler.shutdown_scheduler()
 
 # Dependency
 def get_db():

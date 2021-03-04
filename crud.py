@@ -4,7 +4,7 @@ import uuid
 import models, schemas
 from typing import Optional, List
 from fastapi import Request
-
+import email_scheduler
 
 def get_event(db: Session, event_id: uuid.UUID):
     event = db.query(models.Event).get(event_id)
@@ -33,6 +33,8 @@ def create_event(db: Session, event: schemas.EventCreate, answers: List[str]):
         db.add(db_answer)
     db.flush()
     db.commit()
+    if event.will_email_admin == True and event.admin_email != '':
+        email_scheduler.add_job(str(db_event.id), event.voting_deadline, event.admin_email, event.question)
     return db_event
 
 
