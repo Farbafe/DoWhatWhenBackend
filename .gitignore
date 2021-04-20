@@ -3,3 +3,4 @@ todo
 __pycache__
 .vscode
 email_database.sqlite
+email_log.txt

@@ -1,12 +1,13 @@
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
+import os
 
 scheduler = None
 
 def deadline_reached(event_id, email, question):
     # send to email the question with url for results
-    print('send email to {} for question {}, and url is {}'.format(email, question, event_id))
+    result = os.popen('python3 send_email.py -data_event_id "{}" -email "{}" -question "{}"'.format(event_id, email, question)).read()
 
 def start_scheduler(database_url):
     global scheduler

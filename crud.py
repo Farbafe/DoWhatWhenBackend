@@ -11,8 +11,8 @@ def get_event(db: Session, event_id: uuid.UUID):
     is_custom_answers_added = event.is_custom_answers_added
     answers = []
     for answer in event.answers:
-        if answer.is_custom == True:
-            if is_custom_answers_added == True:
+        if answer.is_custom:
+            if is_custom_answers_added:
                 answers.append(answer.answer)
         else:
             answers.append(answer.answer)
@@ -33,7 +33,7 @@ def create_event(db: Session, event: schemas.EventCreate, answers: List[str]):
         db.add(db_answer)
     db.flush()
     db.commit()
-    if event.will_email_admin == True and event.admin_email != '':
+    if event.will_email_admin and event.admin_email != '':
         email_scheduler.add_job(str(db_event.id), event.voting_deadline, event.admin_email, event.question)
     return db_event
 
