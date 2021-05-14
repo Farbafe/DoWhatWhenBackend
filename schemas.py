@@ -22,6 +22,8 @@ class Answer(AnswerBase):
 
 class VoteBase(BaseModel):
     answer_id: int
+    date_start: datetime.datetime
+    date_end: datetime.datetime
 
 class VoteCreate(VoteBase):
     rank: int

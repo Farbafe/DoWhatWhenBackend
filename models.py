@@ -50,6 +50,8 @@ class Vote(Base):
 
     id = Column(Integer(), primary_key=True)
     answer_id = Column(Integer, ForeignKey("answers.id"))
+    date_start = Column(DateTime)
+    date_end = Column(DateTime)
     rank = Column(Integer)
     voter_id = Column(Integer, ForeignKey("voters.id"))
 

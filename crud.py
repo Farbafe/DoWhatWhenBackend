@@ -5,6 +5,7 @@ import models, schemas
 from typing import Optional, List
 from fastapi import Request
 import email_scheduler
+import datetime
 
 def get_event(db: Session, event_id: uuid.UUID):
     event = db.query(models.Event).get(event_id)
@@ -61,7 +62,8 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
     is_vote_changeable = event.is_vote_changeable # TODO if same username or email, say u can either change vote or not!
     answers = {}
     for answer in event.answers:
-        answers[answer.answer] = answer.id
+        if not answer.is_custom:
+            answers[answer.answer] = answer.id
     rank = 0
     for vote in votes:
         try:
@@ -75,11 +77,18 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
                 answer_id = db_answer.id
             else:
                 return {"error":"cannot add custom"}
-        db_vote = models.Vote(answer_id=answer_id, voter_id=db_voter.id, rank=rank)
-        db.add(db_vote)
+        if vote['dates']:
+            for date in vote['dates']:
+                date_start = datetime.datetime.strptime(date['start'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z')
+                date_end = datetime.datetime.strptime(date['end'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z')
+                db_vote = models.Vote(answer_id=answer_id, voter_id=db_voter.id, rank=rank, date_start=date_start, date_end=date_end)
+                db.add(db_vote)
+        else:
+            db_vote = models.Vote(answer_id=answer_id, voter_id=db_voter.id, rank=rank)
+            db.add(db_vote)
         rank += 1
-        db.flush()
-        db.commit()
+    db.flush()
+    db.commit()
     return {"success": 1}
 
 
