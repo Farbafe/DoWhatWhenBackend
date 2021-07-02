@@ -79,7 +79,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
                 return {"error":"cannot add custom"}
         if vote['dates']:
             for date in vote['dates']:
-                date_start = datetime.datetime.strptime(date['start'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z')
+                date_start = datetime.datetime.strptime(date['start'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z') # todo this works for locale en_us, best if client converts locale to timestamp without timezone and sends that value to api
                 date_end = datetime.datetime.strptime(date['end'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z')
                 db_vote = models.Vote(answer_id=answer_id, voter_id=db_voter.id, rank=rank, date_start=date_start, date_end=date_end)
                 db.add(db_vote)
@@ -89,6 +89,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
         rank += 1
     db.flush()
     db.commit()
+    print(voter_username, voter_email)
     return {"success": 1}
 
 

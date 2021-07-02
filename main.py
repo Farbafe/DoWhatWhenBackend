@@ -2,15 +2,24 @@ from typing import List
 import uuid
 from fastapi import Depends, FastAPI, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi_login import LoginManager
+from fastapi_login.exceptions import InvalidCredentialsException
 from sqlalchemy.orm import Session
 
 import crud, models, schemas
 import email_scheduler
+import os
+import bcrypt
 from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
+LOGIN_SECRET = os.getenv('FASTAPI_LOGIN_SECRET')
+
 app = FastAPI()
+
+manager = LoginManager(LOGIN_SECRET, token_url='/auth/login')
 
 # origins = [
 #     "http://localhost:8080",
@@ -27,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
 @app.on_event("startup")
 def startup():
     email_scheduler.start_scheduler('sqlite:///email_database.sqlite')
@@ -35,6 +45,7 @@ def startup():
 def shutdown():
     email_scheduler.shutdown_scheduler()
 
+
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -42,6 +53,30 @@ def get_db():
         yield db
     finally:
         db.close() # not an error, just pylint
+
+
+@manager.user_loader
+def load_user(email: str):
+    fake_db = {"email01@example.com": {"password": bcrypt.hashpw(u"randompassword".encode("utf8"), bcrypt.gensalt()), "username": "user name placeholder"}, "email02@example.com": {"password": bcrypt.hashpw(u"strongerrandompassword".encode("utf8"), bcrypt.gensalt()), "username": "user name placeholder 02"}}
+    return fake_db.get(email)
+
+
+@app.post("/auth/login")
+def login(data: OAuth2PasswordRequestForm = Depends()):
+    email = data.username
+    password = data.password
+    user = load_user(email)
+    if not user:
+        raise InvalidCredentialsException
+    if not bcrypt.checkpw(password.encode("utf8"), user['password']):
+        raise InvalidCredentialsException
+    access_token = manager.create_access_token(data=dict(sub=email))
+    return {"access_token": access_token, 'token_type': 'bearer'}
+
+
+@app.get("/auth/user")
+def get_user(user=Depends(manager)):
+    return {"user": user}
 
 
 @app.post("/event", response_model=schemas.Event)
