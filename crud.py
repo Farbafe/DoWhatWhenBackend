@@ -48,6 +48,8 @@ def patch_event_admin_email(db: Session, admin_email: str, will_email_admin: boo
 
 
 def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_username: str, voter_email: str):
+    if not voter_username:
+        voter_username = uuid.uuid4().hex
     if voter_email != '':
         db_voter = db.query(models.Voter).filter(models.Voter.email == voter_email).first()
     else:
@@ -89,7 +91,6 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
         rank += 1
     db.flush()
     db.commit()
-    print(voter_username, voter_email)
     return {"success": 1}
 
 
