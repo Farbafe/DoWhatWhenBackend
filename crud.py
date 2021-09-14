@@ -49,7 +49,7 @@ def patch_event_admin_email(db: Session, admin_email: str, will_email_admin: boo
 
 def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_username: str, voter_email: str):
     if not voter_username:
-        voter_username = uuid.uuid4().hex
+        voter_username = 'anonymous' + uuid.uuid4().hex
     if voter_email != '':
         db_voter = db.query(models.Voter).filter(models.Voter.email == voter_email).first()
     else:
@@ -61,7 +61,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
         db.commit()
     event = db.query(models.Event).get(event_id)
     can_write_custom = event.can_write_custom
-    is_vote_changeable = event.is_vote_changeable # TODO if same username or email, say u can either change vote or not!
+    is_vote_changeable = event.is_vote_changeable # TODO if same username or email, say u can either change vote or not! CAN'T multiple vote which means see if there is a voter id and answer id or event id already in place
     answers = {}
     for answer in event.answers:
         if not answer.is_custom:
@@ -95,13 +95,10 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
 
 
 def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
-    rows = db.query(models.Answer.answer, func.count(models.Answer.answer)).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).all()
+    rows = db.query(models.Answer.answer, func.count(models.Answer.answer)).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).all() # todo don't count multiple votes from the same username
     return dict(rows)
 
 
 def get_voters(db: Session, event_id: uuid.UUID, answer: dict): # TODO pagination?
-    voters = db.query(models.Voter.username).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer['answer']).all()
-    _voters = []
-    for voter in voters:
-        _voters.append(voter[0])
-    return _voters
+    voters = db.query(models.Voter.username, models.Vote.date_start, models.Vote.date_end).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer['answer']).all()
+    return voters
