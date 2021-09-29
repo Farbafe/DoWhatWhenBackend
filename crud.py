@@ -95,7 +95,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
 
 
 def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
-    rows = db.query(models.Answer.answer, func.count(models.Answer.answer)).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).all() # todo don't count multiple votes from the same username
+    rows = db.query(models.Answer.answer, func.count(func.distinct(models.Answer.answer, models.Voter.username))).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).group_by(models.Voter.username).all()
     return dict(rows)
 
 
