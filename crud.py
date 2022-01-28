@@ -96,8 +96,9 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
 
 def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
     rows = db.query(models.Answer.answer, func.count(func.distinct(models.Answer.answer, models.Voter.username))).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).group_by(models.Voter.username).all()
-    return dict(rows)
-
+    event = db.query(models.Event).filter(models.Event.id==event_id).first()
+    return {'rows': dict(rows), 'question': event.question, 'voting_deadline': event.voting_deadline}
+# TODO this voting deadline does not return timezone, is it saved in db to begin with?
 
 def get_voters(db: Session, event_id: uuid.UUID, answer: dict): # TODO pagination?
     voters = db.query(models.Voter.username, models.Vote.date_start, models.Vote.date_end).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer['answer']).all()
