@@ -3,7 +3,7 @@ from sqlalchemy import func
 import uuid
 import models, schemas
 from typing import Optional, List
-from fastapi import Request
+from fastapi import Request, HTTPException
 import email_scheduler
 import datetime
 
@@ -48,6 +48,9 @@ def patch_event_admin_email(db: Session, admin_email: str, will_email_admin: boo
 
 
 def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_username: str, voter_email: str):
+    event = db.query(models.Event).get(event_id)
+    if datetime.datetime.now() > event.voting_deadline:
+        raise HTTPException(status_code=400, detail="Voting has reached its deadline and is now closed.")
     if not voter_username:
         voter_username = 'anonymous' + uuid.uuid4().hex
     if voter_email != '':
@@ -59,7 +62,6 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
         db.add(db_voter)
         db.flush()
         db.commit()
-    event = db.query(models.Event).get(event_id)
     can_write_custom = event.can_write_custom
     is_vote_changeable = event.is_vote_changeable # TODO if same username or email, say u can either change vote or not! CAN'T multiple vote which means see if there is a voter id and answer id or event id already in place
     answers = {}
@@ -78,7 +80,7 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
                 db.commit()
                 answer_id = db_answer.id
             else:
-                return {"error":"cannot add custom"}
+                raise HTTPException(status_code=400, detail= "Cannot add custom answer")
         if vote['dates']:
             for date in vote['dates']:
                 date_start = datetime.datetime.strptime(date['start'].split(' (')[0], '%a %b %d %Y %H:%M:%S GMT%z') # todo this works for locale en_us, best if client converts locale to timestamp without timezone and sends that value to api
@@ -95,7 +97,8 @@ def create_vote(db: Session, votes: List[dict], event_id: uuid.UUID, voter_usern
 
 
 def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
-    rows = db.query(models.Answer.answer, func.count(func.distinct(models.Answer.answer, models.Voter.username))).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).group_by(models.Voter.username).all()
+    # rows = db.query(models.Answer.answer, func.count(func.distinct(models.Answer.answer, models.Voter.username))).join(models.Event).join(models.Vote).filter(models.Event.id==event_id).group_by(models.Answer.answer).group_by(models.Voter.username).all()
+    rows = db.query(models.Answer.answer, func.count(models.Answer.answer)).join(models.Event).filter(models.Event.id==event_id).group_by(models.Answer.answer).all()
     event = db.query(models.Event).filter(models.Event.id==event_id).first()
     return {'rows': dict(rows), 'question': event.question, 'voting_deadline': event.voting_deadline}
 # TODO this voting deadline does not return timezone, is it saved in db to begin with?
