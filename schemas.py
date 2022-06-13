@@ -40,7 +40,8 @@ class VoterBase(BaseModel):
     username: str
 
 class VoterCreate(VoterBase):
-    email: Optional[str]
+    email: str
+    password: str
 
 class Voter(VoterBase):
     id: int

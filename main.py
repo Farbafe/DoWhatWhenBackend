@@ -1,3 +1,4 @@
+
 from typing import List
 import uuid
 from fastapi import Depends, FastAPI, HTTPException, Body, Request
@@ -12,6 +13,7 @@ import email_scheduler
 import os
 import bcrypt
 from database import SessionLocal, engine
+from datetime import timedelta
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -19,7 +21,7 @@ LOGIN_SECRET = os.getenv('FASTAPI_LOGIN_SECRET')
 
 app = FastAPI()
 
-manager = LoginManager(LOGIN_SECRET, token_url='/auth/login')
+manager = LoginManager(LOGIN_SECRET, token_url='/auth/login', default_expiry = timedelta(hours=12))
 
 # origins = [
 #     "http://localhost:8080",
@@ -54,29 +56,36 @@ def get_db():
     finally:
         db.close() # not an error, just pylint
 
+@manager.user_loader(db=get_db())
+def query_user(email, db):
+    db = next(db)
+    user = crud.get_user(db=db, email=email)
+    return user
 
-@manager.user_loader
-def load_user(email: str):
-    fake_db = {"email01@example.com": {"password": bcrypt.hashpw(u"randompassword".encode("utf8"), bcrypt.gensalt()), "username": "user name placeholder"}, "email02@example.com": {"password": bcrypt.hashpw(u"strongerrandompassword".encode("utf8"), bcrypt.gensalt()), "username": "user name placeholder 02"}}
-    return fake_db.get(email)
 
+@app.post("/auth/register")
+def create_user(email: str, password: str, db: Session = Depends(get_db)):
+    email = email
+    password = str(bcrypt.hashpw(password.encode("utf8"), bcrypt.gensalt()).decode("utf8"))
+    result = crud.create_user(db, email, password)
+    return {"result" : result}
 
 @app.post("/auth/login")
-def login(data: OAuth2PasswordRequestForm = Depends()):
+def login(data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     email = data.username
     password = data.password
-    user = load_user(email)
+    user = crud.get_user(db, email)
     if not user:
         raise InvalidCredentialsException
-    if not bcrypt.checkpw(password.encode("utf8"), user['password']):
+    if not bcrypt.checkpw(password.encode("utf8"), user.password.encode("utf8")):
         raise InvalidCredentialsException
     access_token = manager.create_access_token(data=dict(sub=email))
     return {"access_token": access_token, 'token_type': 'bearer'}
 
 
-@app.get("/auth/user")
-def get_user(user=Depends(manager)):
-    return {"user": user}
+@app.get('/protected')
+def protected_route(user=Depends(manager)):
+    return {'user': user}
 
 
 @app.post("/event", response_model=schemas.Event)

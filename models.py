@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, String, DateTime, Enum, Table, Integer, PickleType
+from sqlalchemy import Boolean, Column, ForeignKey, String, DateTime, Enum, Table, Integer, PickleType, null
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import voting_method_enum
@@ -22,7 +22,8 @@ class Voter(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String, index=True)
-    email = Column(String, index=True, nullable=True)
+    email = Column(String, index=True, nullable=True, unique=True)
+    password = Column(String, nullable=True)
 
 
 class Event(Base):

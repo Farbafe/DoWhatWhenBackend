@@ -106,3 +106,13 @@ def get_result(db: Session, event_id: uuid.UUID): # TODO pagination?
 def get_voters(db: Session, event_id: uuid.UUID, answer: dict): # TODO pagination?
     voters = db.query(models.Voter.username, models.Vote.date_start, models.Vote.date_end).join(models.Vote).join(models.Answer).filter(models.Answer.event_id==event_id).filter(models.Answer.answer==answer['answer']).all()
     return voters
+
+def get_user(db: Session, email: str):
+    user = db.query(models.Voter).filter(models.Voter.email==email).first()
+    return user
+
+def create_user(db: Session, email: str, password: str):
+    db_user = models.Voter(email=email, password=password)
+    db.add(db_user)
+    db.commit()
+    return {'id': db_user.id, 'email': db_user.email}
